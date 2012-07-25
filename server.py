@@ -54,21 +54,23 @@ example:
 /parcels/bounds?lowerleft=42.335263,-83.081553&topright=42.340354,-83.077025
 """
 @app.route("/parcels/bounds")
-def detroit_area():
+def parcels_in_bounds():
     cursor = c()
-    results = {}
+    results = None
     
-    lowerleft = float(request.args.get('ll', '')).split(',')
-    topright  = float(request.args.get('tr', '')).split(',')
+    print request.args
     
-    if (len(lowerleft) != 2 and len(topright) != 2):
-        pass
-    else:
-        lower_left_lat = lowerleft[0]
-        lower_left_lng = lowerleft[1]
-        top_right_lat  = topright[0]
-        top_right_lng  = topright[1]
-
+    lowerleft = request.args.get('lowerleft', '').split(',')
+    topright  = request.args.get('topright', '').split(',')
+    
+    # Make sure we have all the parameters we can get
+    if (len(lowerleft) == 2 and len(topright) == 2):
+        
+        lower_left_lat = float(lowerleft[0])
+        lower_left_lng = float(lowerleft[1])
+        top_right_lat  = float(topright[0])
+        top_right_lng  = float(topright[1])
+            
         query = cursor.mogrify("\
             SELECT parcelnumb, propaddres, proaddress, ST_AsGeoJSON(wkb_geometry), ST_AsGeoJSON(ST_Centroid(wkb_geometry)) \
             FROM qgis\
@@ -80,7 +82,23 @@ def detroit_area():
         cursor.close()
     
     
-    response = make_response(json.dumps(results, use_decimal=True), mimetype='application/json')
+    # We want to convert strings of geodata from postgres to structured data
+    # In the future, these field names should come from the database
+    # We haven't standardized on the fields yet, though, so this layer adds
+    # a little consistency as we mess with things. 
+    print results
+    processed_results = []
+    for result in results:
+        processed_result = {}
+        processed_result['parcelId'] = result[0].strip()
+        processed_result['address'] = result[2].strip()
+        processed_result['polygon'] = json.loads(result[3], use_decimal=True)
+        processed_result['centroid'] = json.loads(result[4], use_decimal=True)
+        processed_results.append(processed_result)
+    
+    # Generate and send the response
+    response = make_response(json.dumps(processed_results, use_decimal=True))
+    response.mimetype = 'application/json'
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     return response
@@ -91,10 +109,10 @@ Given a point, return the shape of the parcel at that point
 (if any)
 
 example:
-/parcels/parcel?lat=42.320510&lng=-83.089256
+/parcels/parcel?lat=42.335263&lng=-83.081553
 """
 @app.route("/parcels/parcel")
-def detroit_parcel():
+def parcel_at_point():
     cursor = c()
     
     lat = float(request.args.get('lat', ''))
@@ -107,10 +125,17 @@ def detroit_parcel():
     print query
     results = cursor.execute(query)
     result = cursor.fetchone()
-    print result
     cursor.close()
     
-    response = make_response(json.dumps(result, use_decimal=True))
+    # Standardize the data we return
+    # See the comment above in parcels_in_bounds for a rationale
+    processed_result = {}
+    processed_result['parcelId'] = result[0].strip()
+    processed_result['address'] = result[3].strip()
+    processed_result['polygon'] = json.loads(result[4], use_decimal=True)
+    processed_result['centroid'] = json.loads(result[5], use_decimal=True)
+    
+    response = make_response(json.dumps(processed_result, use_decimal=True))
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.mimetype = 'text/javascript'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
