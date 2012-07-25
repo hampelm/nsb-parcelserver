@@ -1,0 +1,4 @@
+export DBHOST=''
+export DBNAME=''
+export DBUSER=''
+export DBPASS=''
