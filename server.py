@@ -89,12 +89,18 @@ def parcels_in_bounds():
     print results
     processed_results = []
     for result in results:
-        processed_result = {}
-        processed_result['parcelId'] = result[0].strip()
-        processed_result['address'] = result[2].strip()
-        processed_result['polygon'] = json.loads(result[3], use_decimal=True)
-        processed_result['centroid'] = json.loads(result[4], use_decimal=True)
-        processed_results.append(processed_result)
+
+        # Dumb error handling. Need to fix to catch real exceptions.
+        # Some things don't have an address so strip fails
+        try:
+            processed_result = {}
+            processed_result['parcelId'] = result[0].strip()
+            processed_result['address'] = result[2].strip()
+            processed_result['polygon'] = json.loads(result[3], use_decimal=True)
+            processed_result['centroid'] = json.loads(result[4], use_decimal=True)
+            processed_results.append(processed_result)
+        except:
+            pass
     
     # Generate and send the response
     response = make_response(json.dumps(processed_results, use_decimal=True))
@@ -129,12 +135,15 @@ def parcel_at_point():
     
     # Standardize the data we return
     # See the comment above in parcels_in_bounds for a rationale
-    processed_result = {}
-    processed_result['parcelId'] = result[0].strip()
-    processed_result['address'] = result[3].strip()
-    processed_result['polygon'] = json.loads(result[4], use_decimal=True)
-    processed_result['centroid'] = json.loads(result[5], use_decimal=True)
-    
+    try:
+        processed_result = {}
+        processed_result['parcelId'] = result[0].strip()
+        processed_result['address'] = result[3].strip()
+        processed_result['polygon'] = json.loads(result[4], use_decimal=True)
+        processed_result['centroid'] = json.loads(result[5], use_decimal=True)
+    except:
+        pass
+        
     response = make_response(json.dumps(processed_result, use_decimal=True))
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.mimetype = 'text/javascript'
