@@ -26,6 +26,7 @@ def c():
 def leaded_strings():
     return "Why is Thekla's construction taking such a long time?"
 
+
 """
 Get the shape of a parcel given a parcel ID
 (Not generally used)
@@ -44,7 +45,6 @@ def detroit_parcel_by_id(id):
     cursor.close()
     print results
     return results
-    
 
 
 """
